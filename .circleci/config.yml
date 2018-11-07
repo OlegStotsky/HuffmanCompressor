@@ -1,0 +1,11 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: rutsky/cpp-test:12
+    steps:
+      - checkout # check out the code in the project directory
+      - run:
+          command: |
+            clang++-9 -O1 -g -fsanitize=address -fno-omit-frame-pointer -Wall -Wextra -Werror -std=c++17 -o huffman main.cpp huffman.cpp
+            cd smoke_test && PATH=/usr/lib/llvm-9/bin/:$PATH ./smoke_test.sh ../huffman
