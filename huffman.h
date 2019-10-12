@@ -40,3 +40,5 @@ size_t *calc_frequencies(std::ifstream *in_file);
 huff_tree *build_tree(size_t *frequencies);
 
 uint8_t *build_codes(huff_tree *tree);
+
+void compress(std::ifstream *in, std::ofstream *out, uint8_t *codes);

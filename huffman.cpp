@@ -60,3 +60,40 @@ uint8_t *build_codes(huff_tree *tree) {
 
     return codes;
 }
+
+void compress(std::ifstream *in, std::ofstream *out, uint8_t *codes) {
+    uint8_t cur_byte = 0;
+    uint8_t num_bits = 0;
+
+    while (!in->eof()) {
+        char c = in->get();
+        uint8_t u = reinterpret_cast<uint8_t &>(c);
+        uint8_t code = codes[u];
+        if (code == 0) {
+            cur_byte << 1;
+            cur_byte | code;
+            ++num_bits;
+            if (num_bits == 8) {
+                (*out) << cur_byte;
+                cur_byte = 0;
+                num_bits = 0;
+            }
+        }
+        while (code != 0) {
+            cur_byte <<= 1;
+            cur_byte |= code & 1;
+            code >>= 1;
+            ++num_bits;
+            if (num_bits == 8) {
+                (*out) << cur_byte;
+                cur_byte = 0;
+                num_bits = 0;
+            }
+        }
+    }
+
+    if (num_bits > 0) {
+        cur_byte <<= num_bits;
+        (*out) << cur_byte;
+    }
+}

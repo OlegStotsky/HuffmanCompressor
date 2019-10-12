@@ -50,11 +50,15 @@ int main(int argc, char **argv) {
     try {
         args arguments = parse_args(argc, argv);
         std::ifstream in_file(arguments.in_file_name, std::ios::binary);
-        std::ifstream out_file(arguments.out_file_name, std::ios::binary);
+        std::ofstream out_file(arguments.out_file_name, std::ios::binary);
         size_t *frequencies = calc_frequencies(&in_file);
         huff_tree *tree = build_tree(frequencies);
         uint8_t *codes = build_codes(tree);
-
+        in_file.clear();
+        in_file.seekg(0, std::ios::beg);
+        compress(&in_file, &out_file, codes);
+        in_file.close();
+        out_file.close();
     } catch (std::invalid_argument &e) {
         std::cerr << e.what();
     }
