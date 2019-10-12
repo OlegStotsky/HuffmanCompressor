@@ -1,5 +1,7 @@
+#include <iostream>
 #include <cstring>
-#include <stdexcept>
+#include <fstream>
+#include "huffman.h"
 
 struct args {
     bool is_verbose;
@@ -47,10 +49,15 @@ args parse_args(int argc, char **argv) {
 int main(int argc, char **argv) {
     try {
         args arguments = parse_args(argc, argv);
-    } catch (std::invalid_argument e) {
+        std::ifstream in_file(arguments.in_file_name, std::ios::binary);
+        std::ifstream out_file(arguments.out_file_name, std::ios::binary);
+        size_t *frequencies = calc_frequencies(&in_file);
+        huff_tree *tree = build_tree(frequencies);
+        uint8_t *codes = build_codes(tree);
+
+    } catch (std::invalid_argument &e) {
         std::cerr << e.what();
     }
 
     return 0;
 }
->>>>>>> initial commit
