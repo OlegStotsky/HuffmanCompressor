@@ -1,7 +1,21 @@
 #include <fstream>
 #include <queue>
 #include "huffman.hpp"
-#include "utils.h"
+
+uint8_t reverse(uint8_t x) {
+    uint8_t result = 0;
+    for (uint8_t i = 0; i < 8; ++i) {
+        uint8_t cur_bit = x & 1;
+        x >>= 1;
+        for (uint8_t j = 0; j < 8 - i - 1; ++j) {
+            cur_bit <<= 1;
+        }
+        result |= cur_bit;
+    }
+
+    return result;
+}
+
 
 huff_tree::~huff_tree() {
     if (this->root != nullptr) {
@@ -67,10 +81,10 @@ void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<c
         codes[as_leaf->symbol] = *prefix;
     }
 
-    prefix->push_back('0');
+    prefix->push_back(0);
     traverse_tree(root->left, codes, prefix, depth + 1);
     prefix->pop_back();
-    prefix->push_back('1');
+    prefix->push_back(1);
     traverse_tree(root->right, codes, prefix, depth + 1);
     prefix->pop_back();
 }
@@ -117,8 +131,8 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
         uint8_t u = reinterpret_cast<uint8_t &>(c);
         std::vector<char> &code = codes[u];
         for (uint64_t i = 0; i < code.size(); ++i) {
-            cur_byte <<= 1;
-            cur_byte |= char_to_uint8_t(code[i]);
+            cur_byte <<= 1u;
+            cur_byte |= code[i];
             ++num_bits;
             if (num_bits == 8) {
                 out->write((char *) &cur_byte, 1);
@@ -129,8 +143,8 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
     }
 
     if (num_bits > 0) {
-        cur_byte <<= 8 - num_bits;
-        (*out) << cur_byte;
+        cur_byte <<= 8u - num_bits;
+        out->write((char *) &cur_byte, 1);
     }
 }
 
@@ -151,7 +165,7 @@ void decompress(std::ifstream *in, std::ofstream *out) {
         in->read(buf, 1);
         uint8_t symbol = *reinterpret_cast<uint8_t *>(buf);
         in->read(buf, 8);
-        uint8_t frequency = *reinterpret_cast<uint64_t *>(buf);
+        uint64_t frequency = *reinterpret_cast<uint64_t *>(buf);
         frequencies[symbol] = frequency;
     }
 
