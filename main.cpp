@@ -1,8 +1,7 @@
 #include <iostream>
 #include <cstring>
-#include <fstream>
 #include <vector>
-#include "huffman.h"
+#include "huffman.hpp"
 
 struct args {
     bool is_verbose;
@@ -53,8 +52,13 @@ int main(int argc, char **argv) {
         std::ifstream in_file(arguments.in_file_name, std::ios::binary);
         std::ofstream out_file(arguments.out_file_name, std::ios::binary);
         if (arguments.compress) {
-            size_t *frequencies = calc_frequencies(&in_file);
+            uint64_t *frequencies = calc_frequencies(&in_file);
             huff_tree *tree = build_tree(frequencies);
+            if (tree == nullptr) {
+                in_file.close();
+                out_file.close();
+                return 0;
+            }
             std::vector<char> *codes = build_codes(tree);
             in_file.clear();
             in_file.seekg(0, std::ios::beg);
@@ -68,9 +72,10 @@ int main(int argc, char **argv) {
 
         in_file.close();
         out_file.close();
-    } catch (std::invalid_argument &e) {
-        std::cerr << e.what();
-    }
 
-    return 0;
+        return 0;
+    } catch (std::exception &e) {
+        std::cerr << e.what();
+        return 1;
+    }
 }
