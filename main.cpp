@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <vector>
 #include "huffman.h"
 
 struct args {
@@ -51,21 +52,22 @@ int main(int argc, char **argv) {
         args arguments = parse_args(argc, argv);
         std::ifstream in_file(arguments.in_file_name, std::ios::binary);
         std::ofstream out_file(arguments.out_file_name, std::ios::binary);
-        size_t *frequencies = calc_frequencies(&in_file);
-        huff_tree *tree = build_tree(frequencies);
-        std::vector<char> *codes = build_codes(tree);
-        in_file.clear();
-        in_file.seekg(0, std::ios::beg);
-        compress(&in_file, &out_file, codes, frequencies);
-        in_file.clear();
-        in_file.seekg(0, std::ios::beg);
-        out_file.close();
+        if (arguments.compress) {
+            size_t *frequencies = calc_frequencies(&in_file);
+            huff_tree *tree = build_tree(frequencies);
+            std::vector<char> *codes = build_codes(tree);
+            in_file.clear();
+            in_file.seekg(0, std::ios::beg);
+            compress(&in_file, &out_file, codes, frequencies);
+            delete[] frequencies;
+            delete tree;
+            delete[] codes;
+        } else if (arguments.decompress) {
+            decompress(&in_file, &out_file);
+        }
+
         in_file.close();
-        std::ifstream in_file2(arguments.out_file_name, std::ios::binary);
-        std::ofstream out_file_2("../decompressed.txt", std::ios::binary);
-        decompress(&in_file2, &out_file_2);
-        in_file2.close();
-        out_file_2.close();
+        out_file.close();
     } catch (std::invalid_argument &e) {
         std::cerr << e.what();
     }

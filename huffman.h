@@ -11,6 +11,8 @@ struct huff_tree {
     explicit huff_tree(huff_tree_node *root) {
         this->root = root;
     }
+
+    ~huff_tree();
 };
 
 struct huff_tree_node {
@@ -24,7 +26,7 @@ struct huff_tree_node {
         this->frequency = frequency;
     }
 
-    virtual ~huff_tree_node() {};
+    virtual ~huff_tree_node();
 };
 
 struct huff_tree_leaf_node : public huff_tree_node {

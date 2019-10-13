@@ -3,12 +3,29 @@
 #include "huffman.h"
 #include "utils.h"
 
+huff_tree::~huff_tree() {
+    if (this->root != nullptr) {
+        delete root;
+    }
+}
+
+huff_tree_node::~huff_tree_node() {
+    if (this->left != nullptr) {
+        delete this->left;
+    }
+    if (this->right != nullptr) {
+        delete this->right;
+    }
+}
 
 size_t *calc_frequencies(std::ifstream *in_file) {
     size_t *frequencies = new size_t[256]();
 
-    while (!in_file->eof()) {
+    while (true) {
         char c = in_file->get();
+        if (c == EOF) {
+            break;
+        }
         frequencies[reinterpret_cast<uint8_t &>(c)]++;
     }
 
@@ -64,11 +81,14 @@ std::vector<char> *build_codes(huff_tree *tree) {
 
 void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, size_t *frequencies) {
     uint8_t num_non_zero_frequencies = 0;
+    size_t file_len = 0;
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] > 0) {
             ++num_non_zero_frequencies;
+            file_len += frequencies[i];
         }
     }
+    out->write((char *) &file_len, 1);
     out->write((char *) &num_non_zero_frequencies, 1);
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] == 0) {
@@ -105,8 +125,10 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, s
 
 void decompress(std::ifstream *in, std::ofstream *out) {
     char c = in->get();
+    uint8_t file_len = reinterpret_cast<uint8_t &>(c);
+    c = in->get();
     uint8_t num_non_zero_frequencies = reinterpret_cast<uint8_t &>(c);
-    size_t *frequencies = new size_t[256]();
+    size_t frequencies[256]{};
     for (uint8_t i = 0; i < num_non_zero_frequencies; ++i) {
         char c = in->get();
         uint8_t symbol = reinterpret_cast<uint8_t &>(c);
@@ -119,14 +141,10 @@ void decompress(std::ifstream *in, std::ofstream *out) {
 
     uint8_t cur_code = 0;
     huff_tree_node *cur_node = tree->root;
+    size_t num_symbols_decoded = 0;
     while (!in->eof()) {
         char c = in->get();
         uint8_t u = reverse(reinterpret_cast<uint8_t &>(c));
-
-        if (u == 0) {
-            out->write((char *) &u, 1);
-            continue;
-        }
 
         for (uint8_t i = 0; i < 8; ++i) {
             uint8_t cur_bit = u & 1;
@@ -140,6 +158,10 @@ void decompress(std::ifstream *in, std::ofstream *out) {
             if (as_leaf != nullptr) {
                 out->write((char *) &as_leaf->symbol, 1);
                 cur_node = tree->root;
+                num_symbols_decoded++;
+                if (num_symbols_decoded == file_len) {
+                    return;
+                }
             }
         }
     }
