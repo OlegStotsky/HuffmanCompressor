@@ -1,6 +1,7 @@
 #include <fstream>
 #include <queue>
 #include "huffman.h"
+#include "utils.h"
 
 
 size_t *calc_frequencies(std::ifstream *in_file) {
@@ -36,56 +37,60 @@ huff_tree *build_tree(size_t *frequencies) {
     return tree;
 }
 
-void traverse_tree(huff_tree_node *root, uint8_t *codes, std::bitset<8> *prefix, int depth) {
+void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<char> *prefix, int depth) {
     if (root == nullptr) {
         return;
     }
 
     huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(root);
     if (as_leaf != nullptr) {
-        uint8_t code = prefix->to_ulong();
-        codes[as_leaf->symbol] = code;
+        codes[as_leaf->symbol] = *prefix;
     }
 
-    prefix->set(depth, false);
+    prefix->push_back('0');
     traverse_tree(root->left, codes, prefix, depth + 1);
-    prefix->set(depth, true);
+    prefix->pop_back();
+    prefix->push_back('1');
     traverse_tree(root->right, codes, prefix, depth + 1);
-    prefix->set(depth, false);
+    prefix->pop_back();
 }
 
-uint8_t *build_codes(huff_tree *tree) {
-    uint8_t *codes = new uint8_t[256]();
-    traverse_tree(tree->root, codes, new std::bitset<8>(), 0);
+std::vector<char> *build_codes(huff_tree *tree) {
+    std::vector<char> *codes = new std::vector<char>[256];
+    traverse_tree(tree->root, codes, new std::vector<char>(), 0);
 
     return codes;
 }
 
-void compress(std::ifstream *in, std::ofstream *out, uint8_t *codes) {
+void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, size_t *frequencies) {
+    uint8_t num_non_zero_frequencies = 0;
+    for (int i = 0; i < 256; ++i) {
+        if (frequencies[i] > 0) {
+            ++num_non_zero_frequencies;
+        }
+    }
+    out->write((char *) &num_non_zero_frequencies, 1);
+    for (int i = 0; i < 256; ++i) {
+        if (frequencies[i] == 0) {
+            continue;
+        }
+        out->write((char *) &reinterpret_cast<uint8_t &>(i), 1);
+        out->write((char *) &frequencies[i], 1);
+    }
+
     uint8_t cur_byte = 0;
     uint8_t num_bits = 0;
 
     while (!in->eof()) {
         char c = in->get();
         uint8_t u = reinterpret_cast<uint8_t &>(c);
-        uint8_t code = codes[u];
-        if (code == 0) {
-            cur_byte << 1;
-            cur_byte | code;
-            ++num_bits;
-            if (num_bits == 8) {
-                (*out) << cur_byte;
-                cur_byte = 0;
-                num_bits = 0;
-            }
-        }
-        while (code != 0) {
+        std::vector<char> &code = codes[u];
+        for (int i = 0; i < code.size(); ++i) {
             cur_byte <<= 1;
-            cur_byte |= code & 1;
-            code >>= 1;
+            cur_byte |= char_to_uint8_t(code[i]);
             ++num_bits;
             if (num_bits == 8) {
-                (*out) << cur_byte;
+                out->write((char *) &cur_byte, 1);
                 cur_byte = 0;
                 num_bits = 0;
             }
@@ -93,7 +98,49 @@ void compress(std::ifstream *in, std::ofstream *out, uint8_t *codes) {
     }
 
     if (num_bits > 0) {
-        cur_byte <<= num_bits;
+        cur_byte <<= 8 - num_bits;
         (*out) << cur_byte;
+    }
+}
+
+void decompress(std::ifstream *in, std::ofstream *out) {
+    char c = in->get();
+    uint8_t num_non_zero_frequencies = reinterpret_cast<uint8_t &>(c);
+    size_t *frequencies = new size_t[256]();
+    for (uint8_t i = 0; i < num_non_zero_frequencies; ++i) {
+        char c = in->get();
+        uint8_t symbol = reinterpret_cast<uint8_t &>(c);
+        c = in->get();
+        uint8_t frequency = reinterpret_cast<uint8_t &>(c);
+        frequencies[symbol] = frequency;
+    }
+
+    huff_tree *tree = build_tree(frequencies);
+
+    uint8_t cur_code = 0;
+    huff_tree_node *cur_node = tree->root;
+    while (!in->eof()) {
+        char c = in->get();
+        uint8_t u = reverse(reinterpret_cast<uint8_t &>(c));
+
+        if (u == 0) {
+            out->write((char *) &u, 1);
+            continue;
+        }
+
+        for (uint8_t i = 0; i < 8; ++i) {
+            uint8_t cur_bit = u & 1;
+            u >>= 1;
+            if (cur_bit == 1) {
+                cur_node = cur_node->right;
+            } else {
+                cur_node = cur_node->left;
+            }
+            huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(cur_node);
+            if (as_leaf != nullptr) {
+                out->write((char *) &as_leaf->symbol, 1);
+                cur_node = tree->root;
+            }
+        }
     }
 }

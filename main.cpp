@@ -53,12 +53,19 @@ int main(int argc, char **argv) {
         std::ofstream out_file(arguments.out_file_name, std::ios::binary);
         size_t *frequencies = calc_frequencies(&in_file);
         huff_tree *tree = build_tree(frequencies);
-        uint8_t *codes = build_codes(tree);
+        std::vector<char> *codes = build_codes(tree);
         in_file.clear();
         in_file.seekg(0, std::ios::beg);
-        compress(&in_file, &out_file, codes);
-        in_file.close();
+        compress(&in_file, &out_file, codes, frequencies);
+        in_file.clear();
+        in_file.seekg(0, std::ios::beg);
         out_file.close();
+        in_file.close();
+        std::ifstream in_file2(arguments.out_file_name, std::ios::binary);
+        std::ofstream out_file_2("../decompressed.txt", std::ios::binary);
+        decompress(&in_file2, &out_file_2);
+        in_file2.close();
+        out_file_2.close();
     } catch (std::invalid_argument &e) {
         std::cerr << e.what();
     }
