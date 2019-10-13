@@ -110,14 +110,14 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
             file_len += frequencies[i];
         }
     }
-    out->write((char *) &file_len, 8);
+    out->write(reinterpret_cast<char *>(&file_len), 8);
     out->write((char *) &num_non_zero_frequencies, 8);
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] == 0) {
             continue;
         }
-        out->write((char *) &reinterpret_cast<uint8_t &>(i), 1);
-        out->write((char *) &frequencies[i], 8);
+        out->write(reinterpret_cast<char *>(&reinterpret_cast<uint8_t &>(i)), 1);
+        out->write(reinterpret_cast<char *>(&frequencies[i]), 8);
     }
 
     uint8_t cur_byte = 0;
@@ -180,7 +180,7 @@ void decompress(std::ifstream *in, std::ofstream *out) {
         for (uint8_t i = 0; i < 8; ++i) {
             huff_tree_leaf_node *root_as_leaf = dynamic_cast<huff_tree_leaf_node *>(tree->root);
             if (root_as_leaf != nullptr) {
-                out->write((char *) &root_as_leaf->symbol, 1);
+                out->write(reinterpret_cast<char *>(&root_as_leaf->symbol), 1);
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
@@ -197,7 +197,7 @@ void decompress(std::ifstream *in, std::ofstream *out) {
             }
             huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(cur_node);
             if (as_leaf != nullptr) {
-                out->write((char *) &as_leaf->symbol, 1);
+                out->write(reinterpret_cast<char *>(&as_leaf->symbol), 1);
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
