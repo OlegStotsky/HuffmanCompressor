@@ -76,7 +76,7 @@ huff_tree *build_tree(uint64_t *frequencies) {
     return tree;
 }
 
-void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<char> *prefix, uint64_t depth) {
+void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<char> *prefix) {
     if (root == nullptr) {
         return;
     }
@@ -87,10 +87,10 @@ void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<c
     }
 
     prefix->push_back(0);
-    traverse_tree(root->left, codes, prefix, depth + 1);
+    traverse_tree(root->left, codes, prefix);
     prefix->pop_back();
     prefix->push_back(1);
-    traverse_tree(root->right, codes, prefix, depth + 1);
+    traverse_tree(root->right, codes, prefix);
     prefix->pop_back();
 }
 
@@ -101,7 +101,10 @@ std::vector<char> *build_codes(huff_tree *tree) {
         codes[as_leaf->symbol] = {0};
         return codes;
     }
-    traverse_tree(tree->root, codes, new std::vector<char>(), 0);
+
+    std::vector<char> *prefix = new std::vector<char>();
+    traverse_tree(tree->root, codes, prefix);
+    delete prefix;
 
     return codes;
 }
