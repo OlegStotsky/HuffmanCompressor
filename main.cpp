@@ -6,7 +6,6 @@
 struct args {
     bool is_verbose;
     bool compress;
-    bool decompress;
     std::string in_file_name;
     std::string out_file_name;
 };
@@ -43,7 +42,7 @@ args parse_args(int argc, char **argv) {
         throw std::invalid_argument("at least one of -c -d options should be passed");
     }
 
-    return {is_v, is_compress, is_decompress, in_file_name, out_file_name};
+    return {is_v, is_compress, in_file_name, out_file_name};
 }
 
 void print_compression_statistics(compression_statistics statistics) {
@@ -79,12 +78,25 @@ int main(int argc, char **argv) {
             in_file.seekg(0, std::ios::beg);
             compression_statistics statistics = compress(&in_file, &out_file, codes, frequencies);
             print_compression_statistics(statistics);
+            std::vector<char> *v = new std::vector<char>();
+            if (arguments.is_verbose) {
+                print_codes(tree->root, v);
+            }
             delete[] frequencies;
             delete tree;
             delete[] codes;
-        } else if (arguments.decompress) {
-            decompression_statistics statistics = decompress(&in_file, &out_file);
+            delete v;
+        } else {
+            auto p = decompress(&in_file, &out_file);
+            decompression_statistics statistics = p.first;
+            huff_tree *tree = p.second;
             print_decompression_statistics(statistics);
+            std::vector<char> *v = new std::vector<char>();
+            if (arguments.is_verbose) {
+                print_codes(tree->root, v);
+            }
+            delete v;
+            delete tree;
         }
 
         return 0;

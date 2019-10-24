@@ -1,19 +1,22 @@
 #include <fstream>
 #include <queue>
+#include <iostream>
 #include "huffman.hpp"
 
-uint8_t reverse(uint8_t x) {
-    uint8_t result = 0;
-    for (uint8_t i = 0; i < 8; ++i) {
-        uint8_t cur_bit = x & 1;
-        x >>= 1;
-        for (uint8_t j = 0; j < 8 - i - 1; ++j) {
-            cur_bit <<= 1;
+namespace {
+    uint8_t reverse(uint8_t x) {
+        uint8_t result = 0;
+        for (uint8_t i = 0; i < 8; ++i) {
+            uint8_t cur_bit = x & 1;
+            x >>= 1;
+            for (uint8_t j = 0; j < 8 - i - 1; ++j) {
+                cur_bit <<= 1;
+            }
+            result |= cur_bit;
         }
-        result |= cur_bit;
-    }
 
-    return result;
+        return result;
+    }
 }
 
 
@@ -117,7 +120,7 @@ compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64
         }
     }
     out->write(reinterpret_cast<char *>(&file_len), 8);
-    out->write((char *) &num_non_zero_frequencies, 8);
+    out->write(reinterpret_cast<char *>(&num_non_zero_frequencies), 8);
     overhead_size += 16;
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] == 0) {
@@ -161,19 +164,19 @@ compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64
     return compression_statistics{compressed_size, source_size, overhead_size};
 }
 
-decompression_statistics decompress(std::ifstream *in, std::ofstream *out) {
+std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, std::ofstream *out) {
     size_t compressed_size = 0;
     size_t decompressed_size = 0;
     size_t overhead_size = 0;
 
     if (in->eof()) {
-        return decompression_statistics{decompressed_size, compressed_size, overhead_size};
+        return std::make_pair(decompression_statistics{decompressed_size, compressed_size, overhead_size}, nullptr);
     }
     char buf[8]{};
     in->read(buf, 8);
     overhead_size += 8;
     if (in->eof()) {
-        return decompression_statistics{decompressed_size, compressed_size, overhead_size};
+        return std::make_pair(decompression_statistics{decompressed_size, compressed_size, overhead_size}, nullptr);
     }
     uint64_t file_len = *reinterpret_cast<uint64_t *>(buf);
     in->read(buf, 8);
@@ -206,7 +209,8 @@ decompression_statistics decompress(std::ifstream *in, std::ofstream *out) {
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
-                    return decompression_statistics{decompressed_size, compressed_size, overhead_size};
+                    return std::make_pair(decompression_statistics{decompressed_size, compressed_size, overhead_size},
+                                          tree);
                 }
                 continue;
             }
@@ -224,9 +228,32 @@ decompression_statistics decompress(std::ifstream *in, std::ofstream *out) {
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
-                    return decompression_statistics{decompressed_size, compressed_size, overhead_size};
+                    return std::make_pair(decompression_statistics{decompressed_size, compressed_size, overhead_size},
+                                          tree);
                 }
             }
         }
     }
+}
+
+void print_codes(huff_tree_node *node, std::vector<char> *cur_code) {
+    if (node == nullptr) {
+        return;
+    }
+    huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(node);
+    if (as_leaf != nullptr) {
+        char symbol = as_leaf->symbol;
+        for (int i = 0; i < (*cur_code).size(); ++i) {
+            std::cout << static_cast<uint16_t>((*cur_code)[i]) << " ";
+        }
+        std::cout << static_cast<uint16_t>(symbol) << std::endl;
+        return;
+    }
+
+    cur_code->push_back(0);
+    print_codes(node->left, cur_code);
+    cur_code->pop_back();
+    cur_code->push_back(1);
+    print_codes(node->right, cur_code);
+    cur_code->pop_back();
 }

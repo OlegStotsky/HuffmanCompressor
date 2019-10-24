@@ -57,4 +57,6 @@ std::vector<char> *build_codes(huff_tree *tree);
 
 compression_statistics compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64_t *frequencies);
 
-decompression_statistics decompress(std::ifstream *in, std::ofstream *out);
+std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, std::ofstream *out);
+
+void print_codes(huff_tree_node *tree, std::vector<char> *cur_code);
