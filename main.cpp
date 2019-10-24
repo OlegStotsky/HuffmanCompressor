@@ -52,8 +52,8 @@ void print_compression_statistics(compression_statistics statistics) {
 }
 
 void print_decompression_statistics(decompression_statistics statistics) {
-    std::cout << statistics.decompressed_size << std::endl;
     std::cout << statistics.compressed_size << std::endl;
+    std::cout << statistics.decompressed_size << std::endl;
     std::cout << statistics.additional_information_size << std::endl;
 }
 
