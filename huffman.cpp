@@ -234,6 +234,9 @@ std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, s
             }
         }
     }
+
+    return std::make_pair(decompression_statistics{decompressed_size, compressed_size, overhead_size},
+                          tree);
 }
 
 void print_codes(huff_tree_node *node, std::vector<char> *cur_code) {
@@ -243,7 +246,7 @@ void print_codes(huff_tree_node *node, std::vector<char> *cur_code) {
     huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(node);
     if (as_leaf != nullptr) {
         char symbol = as_leaf->symbol;
-        for (int i = 0; i < (*cur_code).size(); ++i) {
+        for (size_t i = 0; i < (*cur_code).size(); ++i) {
             std::cout << static_cast<uint16_t>((*cur_code)[i]) << " ";
         }
         std::cout << static_cast<uint16_t>(symbol) << std::endl;
