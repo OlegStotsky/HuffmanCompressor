@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <fstream>
+#include <vector>
 
 struct huff_tree_node;
 
@@ -59,4 +60,4 @@ compression_statistics compress(std::ifstream *in, std::ofstream *out, std::vect
 
 std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, std::ofstream *out);
 
-void print_codes(huff_tree_node *tree, std::vector<char> *cur_code);
+void print_codes(huff_tree_node *node, std::vector<char> *cur_code);

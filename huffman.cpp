@@ -151,7 +151,7 @@ compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64
             ++num_bits;
             if (num_bits == 8) {
                 compressed_size++;
-                out->write((char *) &cur_byte, 1);
+                out->write(reinterpret_cast<char *>(&cur_byte), 1);
                 cur_byte = 0;
                 num_bits = 0;
             }
@@ -161,7 +161,7 @@ compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64
     if (num_bits > 0) {
         compressed_size++;
         cur_byte <<= 8u - num_bits;
-        out->write((char *) &cur_byte, 1);
+        out->write(reinterpret_cast<char *>(&cur_byte), 1);
     }
 
     return compression_statistics{compressed_size, source_size, overhead_size};
