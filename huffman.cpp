@@ -220,9 +220,13 @@ std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, s
             uint8_t cur_bit = u & 1;
             u >>= 1;
             if (cur_bit == 1) {
-                cur_node = cur_node->right;
+                if (cur_node != nullptr) {
+                    cur_node = cur_node->right;
+                }
             } else {
-                cur_node = cur_node->left;
+                if (cur_node != nullptr) {
+                    cur_node = cur_node->left;
+                }
             }
             huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(cur_node);
             if (as_leaf != nullptr) {
