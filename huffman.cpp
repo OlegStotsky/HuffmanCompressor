@@ -32,18 +32,20 @@ huff_tree_node::~huff_tree_node() {
     }
 }
 
-uint64_t *calc_frequencies(std::ifstream *in_file) {
+std::pair<uint64_t *, size_t> calc_frequencies(std::ifstream *in_file) {
     uint64_t *frequencies = new uint64_t[256]();
+    size_t file_size = 0;
 
     while (true) {
         char c = in_file->get();
         if (in_file->eof()) {
             break;
         }
+        file_size++;
         frequencies[reinterpret_cast<uint8_t &>(c)]++;
     }
 
-    return frequencies;
+    return std::make_pair(frequencies, file_size);
 }
 
 huff_tree *build_tree(uint64_t *frequencies) {
@@ -93,7 +95,7 @@ std::vector<char> *build_codes(huff_tree *tree) {
     std::vector<char> *codes = new std::vector<char>[256];
     huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(tree->root);
     if (as_leaf != nullptr) {
-        codes[as_leaf->symbol] = {'0'};
+        codes[as_leaf->symbol] = {0};
         return codes;
     }
     traverse_tree(tree->root, codes, new std::vector<char>(), 0);
@@ -101,7 +103,11 @@ std::vector<char> *build_codes(huff_tree *tree) {
     return codes;
 }
 
-void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64_t *frequencies) {
+compression_statistics
+compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64_t *frequencies) {
+    size_t source_size = 0;
+    size_t compressed_size = 0;
+    size_t overhead_size = 0;
     uint64_t num_non_zero_frequencies = 0;
     uint64_t file_len = 0;
     for (int i = 0; i < 256; ++i) {
@@ -112,12 +118,14 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
     }
     out->write(reinterpret_cast<char *>(&file_len), 8);
     out->write((char *) &num_non_zero_frequencies, 8);
+    overhead_size += 16;
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] == 0) {
             continue;
         }
         out->write(reinterpret_cast<char *>(&reinterpret_cast<uint8_t &>(i)), 1);
         out->write(reinterpret_cast<char *>(&frequencies[i]), 8);
+        overhead_size += 9;
     }
 
     uint8_t cur_byte = 0;
@@ -128,6 +136,7 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
         if (in->eof()) {
             break;
         }
+        source_size++;
         uint8_t u = reinterpret_cast<uint8_t &>(c);
         std::vector<char> &code = codes[u];
         for (uint64_t i = 0; i < code.size(); ++i) {
@@ -135,6 +144,7 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
             cur_byte |= code[i];
             ++num_bits;
             if (num_bits == 8) {
+                compressed_size++;
                 out->write((char *) &cur_byte, 1);
                 cur_byte = 0;
                 num_bits = 0;
@@ -143,22 +153,31 @@ void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, u
     }
 
     if (num_bits > 0) {
+        compressed_size++;
         cur_byte <<= 8u - num_bits;
         out->write((char *) &cur_byte, 1);
     }
+
+    return compression_statistics{compressed_size, source_size, overhead_size};
 }
 
-void decompress(std::ifstream *in, std::ofstream *out) {
+decompression_statistics decompress(std::ifstream *in, std::ofstream *out) {
+    size_t compressed_size = 0;
+    size_t decompressed_size = 0;
+    size_t overhead_size = 0;
+
     if (in->eof()) {
-        return;
+        return decompression_statistics{decompressed_size, compressed_size, overhead_size};
     }
     char buf[8]{};
     in->read(buf, 8);
+    overhead_size += 8;
     if (in->eof()) {
-        return;
+        return decompression_statistics{decompressed_size, compressed_size, overhead_size};
     }
     uint64_t file_len = *reinterpret_cast<uint64_t *>(buf);
     in->read(buf, 8);
+    overhead_size += 8;
     uint64_t num_non_zero_frequencies = *reinterpret_cast<uint64_t *>(buf);
     uint64_t frequencies[256]{};
     for (uint64_t i = 0; i < num_non_zero_frequencies; ++i) {
@@ -167,6 +186,7 @@ void decompress(std::ifstream *in, std::ofstream *out) {
         in->read(buf, 8);
         uint64_t frequency = *reinterpret_cast<uint64_t *>(buf);
         frequencies[symbol] = frequency;
+        overhead_size += 9;
     }
 
     huff_tree *tree = build_tree(frequencies);
@@ -176,15 +196,17 @@ void decompress(std::ifstream *in, std::ofstream *out) {
     while (!in->eof()) {
         char c = in->get();
         uint8_t u = reverse(reinterpret_cast<uint8_t &>(c));
+        compressed_size++;
 
         for (uint8_t i = 0; i < 8; ++i) {
             huff_tree_leaf_node *root_as_leaf = dynamic_cast<huff_tree_leaf_node *>(tree->root);
             if (root_as_leaf != nullptr) {
                 out->write(reinterpret_cast<char *>(&root_as_leaf->symbol), 1);
+                decompressed_size++;
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
-                    return;
+                    return decompression_statistics{decompressed_size, compressed_size, overhead_size};
                 }
                 continue;
             }
@@ -198,10 +220,11 @@ void decompress(std::ifstream *in, std::ofstream *out) {
             huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(cur_node);
             if (as_leaf != nullptr) {
                 out->write(reinterpret_cast<char *>(&as_leaf->symbol), 1);
+                decompressed_size++;
                 cur_node = tree->root;
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
-                    return;
+                    return decompression_statistics{decompressed_size, compressed_size, overhead_size};
                 }
             }
         }

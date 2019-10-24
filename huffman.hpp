@@ -37,12 +37,24 @@ struct huff_tree_leaf_node : public huff_tree_node {
     }
 };
 
-uint64_t *calc_frequencies(std::ifstream *in_file);
+struct compression_statistics {
+    size_t compressed_size;
+    size_t source_size;
+    size_t additional_information_size;
+};
+
+struct decompression_statistics {
+    size_t decompressed_size;
+    size_t compressed_size;
+    size_t additional_information_size;
+};
+
+std::pair<uint64_t *, size_t> calc_frequencies(std::ifstream *in_file);
 
 huff_tree *build_tree(uint64_t *frequencies);
 
 std::vector<char> *build_codes(huff_tree *tree);
 
-void compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64_t *frequencies);
+compression_statistics compress(std::ifstream *in, std::ofstream *out, std::vector<char> *codes, uint64_t *frequencies);
 
-void decompress(std::ifstream *in, std::ofstream *out);
+decompression_statistics decompress(std::ifstream *in, std::ofstream *out);

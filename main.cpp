@@ -46,32 +46,46 @@ args parse_args(int argc, char **argv) {
     return {is_v, is_compress, is_decompress, in_file_name, out_file_name};
 }
 
+void print_compression_statistics(compression_statistics statistics) {
+    std::cout << statistics.source_size << std::endl;
+    std::cout << statistics.compressed_size << std::endl;
+    std::cout << statistics.additional_information_size << std::endl;
+}
+
+void print_decompression_statistics(decompression_statistics statistics) {
+    std::cout << statistics.decompressed_size << std::endl;
+    std::cout << statistics.compressed_size << std::endl;
+    std::cout << statistics.additional_information_size << std::endl;
+}
+
 int main(int argc, char **argv) {
     try {
         args arguments = parse_args(argc, argv);
         std::ifstream in_file(arguments.in_file_name, std::ios::binary);
         std::ofstream out_file(arguments.out_file_name, std::ios::binary);
         if (arguments.compress) {
-            uint64_t *frequencies = calc_frequencies(&in_file);
+            std::pair<uint64_t *, size_t> p = calc_frequencies(&in_file);
+            auto frequencies = p.first;
+            auto file_size = p.second;
             huff_tree *tree = build_tree(frequencies);
             if (tree == nullptr) {
-                in_file.close();
-                out_file.close();
+                print_compression_statistics(compression_statistics{file_size, 0, 0});
+                delete[] frequencies;
+                delete tree;
                 return 0;
             }
             std::vector<char> *codes = build_codes(tree);
             in_file.clear();
             in_file.seekg(0, std::ios::beg);
-            compress(&in_file, &out_file, codes, frequencies);
+            compression_statistics statistics = compress(&in_file, &out_file, codes, frequencies);
+            print_compression_statistics(statistics);
             delete[] frequencies;
             delete tree;
             delete[] codes;
         } else if (arguments.decompress) {
-            decompress(&in_file, &out_file);
+            decompression_statistics statistics = decompress(&in_file, &out_file);
+            print_decompression_statistics(statistics);
         }
-
-        in_file.close();
-        out_file.close();
 
         return 0;
     } catch (std::exception &e) {
