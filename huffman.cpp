@@ -246,24 +246,28 @@ std::pair<decompression_statistics, huff_tree *> decompress(std::ifstream *in, s
                           tree);
 }
 
-void print_codes(huff_tree_node *node, std::vector<char> *cur_code) {
+void print_codes(huff_tree_node *node, std::vector<char> *cur_code, int depth) {
     if (node == nullptr) {
         return;
     }
     huff_tree_leaf_node *as_leaf = dynamic_cast<huff_tree_leaf_node *>(node);
     if (as_leaf != nullptr) {
-        char symbol = as_leaf->symbol;
-        for (size_t i = 0; i < (*cur_code).size(); ++i) {
-            std::cout << static_cast<uint16_t>((*cur_code)[i]) << " ";
+        uint8_t symbol = as_leaf->symbol;
+        if (depth == 0) {
+            std::cout << 0;
         }
-        std::cout << static_cast<uint16_t>(symbol) << std::endl;
+        for (size_t i = 0; i < (*cur_code).size(); ++i) {
+            std::cout << static_cast<uint16_t>((*cur_code)[i]);
+        }
+        std::cout << " ";
+        std::cout << unsigned(symbol) << std::endl;
         return;
     }
 
     cur_code->push_back(0);
-    print_codes(node->left, cur_code);
+    print_codes(node->left, cur_code, depth + 1);
     cur_code->pop_back();
     cur_code->push_back(1);
-    print_codes(node->right, cur_code);
+    print_codes(node->right, cur_code, depth + 1);
     cur_code->pop_back();
 }

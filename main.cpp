@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
             print_compression_statistics(statistics);
             std::vector<char> *v = new std::vector<char>();
             if (arguments.is_verbose) {
-                print_codes(tree->root, v);
+                print_codes(tree->root, v, 0);
             }
             delete[] frequencies;
             delete tree;
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
             print_decompression_statistics(statistics);
             std::vector<char> *v = new std::vector<char>();
             if (arguments.is_verbose) {
-                print_codes(tree->root, v);
+                print_codes(tree->root, v, 0);
             }
             delete v;
             delete tree;
