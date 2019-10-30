@@ -3,18 +3,20 @@
 #include <iostream>
 #include "huffman.hpp"
 
-uint8_t reverse(uint8_t x) {
-    uint8_t result = 0;
-    for (uint8_t i = 0; i < 8; ++i) {
-        uint8_t cur_bit = x & 1;
-        x >>= 1;
-        for (uint8_t j = 0; j < 8 - i - 1; ++j) {
-            cur_bit <<= 1;
+namespace {
+    uint8_t reverse(uint8_t x) {
+        uint8_t result = 0;
+        for (uint8_t i = 0; i < 8; ++i) {
+            uint8_t cur_bit = x & 1u;
+            x >>= 1u;
+            for (uint8_t j = 0; j < 8 - i - 1; ++j) {
+                cur_bit <<= 1u;
+            }
+            result |= cur_bit;
         }
-        result |= cur_bit;
-    }
 
-    return result;
+        return result;
+    }
 }
 
 struct huff_tree_node;
@@ -172,9 +174,9 @@ _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint3
         source_size++;
         uint8_t u = reinterpret_cast<uint8_t &>(c);
         std::vector<char> &code = codes[u];
-        for (uint64_t i = 0; i < code.size(); ++i) {
+        for (char i : code) {
             cur_byte <<= 1u;
-            cur_byte |= code[i];
+            cur_byte |= i;
             ++num_bits;
             if (num_bits == 8) {
                 compressed_size++;
@@ -231,8 +233,8 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
         compressed_size++;
 
         for (uint8_t i = 0; i < 8; ++i) {
-            uint8_t cur_bit = u & 1;
-            u >>= 1;
+            uint8_t cur_bit = u & 1u;
+            u >>= 1u;
             if (cur_bit == 1 && !root_is_leaf) {
                 if (cur_node != nullptr) {
                     cur_node = cur_node->right;
@@ -267,8 +269,8 @@ void print_codes(huff_tree_node *node, std::vector<char> *cur_code, int depth) {
         if (depth == 0) {
             std::cout << 0;
         }
-        for (size_t i = 0; i < (*cur_code).size(); ++i) {
-            std::cout << static_cast<uint16_t>((*cur_code)[i]);
+        for (char i : (*cur_code)) {
+            std::cout << static_cast<uint16_t>(i);
         }
         std::cout << " ";
         std::cout << unsigned(symbol) << std::endl;
