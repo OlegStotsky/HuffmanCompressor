@@ -26,40 +26,29 @@ struct huff_tree {
         this->root = root;
     }
 
-    ~huff_tree();
+    ~huff_tree() {
+        delete root;
+    }
 };
 
 struct huff_tree_node {
     huff_tree_node *left;
     huff_tree_node *right;
     uint64_t frequency;
+    uint8_t symbol;
 
-    huff_tree_node(huff_tree_node *left, huff_tree_node *right, uint64_t frequency) {
+    huff_tree_node(huff_tree_node *left, huff_tree_node *right, uint64_t frequency, uint8_t symbol) {
         this->left = left;
         this->right = right;
         this->frequency = frequency;
-    }
-
-    virtual ~huff_tree_node();
-};
-
-struct huff_tree_leaf_node : public huff_tree_node {
-    uint8_t symbol;
-
-    huff_tree_leaf_node(uint64_t frequency, uint8_t symbol) : huff_tree_node(nullptr, nullptr, frequency) {
         this->symbol = symbol;
     }
+
+    ~huff_tree_node() {
+        delete this->left;
+        delete this->right;
+    }
 };
-
-
-huff_tree::~huff_tree() {
-    delete root;
-}
-
-huff_tree_node::~huff_tree_node() {
-    delete this->left;
-    delete this->right;
-}
 
 struct compression_statistics {
     size_t compressed_size;
@@ -103,7 +92,7 @@ huff_tree *build_tree(uint64_t *frequencies) {
         if (frequencies[i] == 0) {
             continue;
         }
-        Q.push(new huff_tree_leaf_node(frequencies[i], i));
+        Q.push(new huff_tree_node(nullptr, nullptr, frequencies[i], i));
     }
 
     while (Q.size() > 1) {
@@ -111,7 +100,7 @@ huff_tree *build_tree(uint64_t *frequencies) {
         Q.pop();
         huff_tree_node *right = Q.top();
         Q.pop();
-        Q.push(new huff_tree_node(left, right, left->frequency + right->frequency));
+        Q.push(new huff_tree_node(left, right, left->frequency + right->frequency, 0));
     }
 
     if (Q.empty()) {
@@ -126,9 +115,8 @@ void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<c
         return;
     }
 
-    auto *as_leaf = dynamic_cast<huff_tree_leaf_node *>(root);
-    if (as_leaf != nullptr) {
-        codes[as_leaf->symbol] = *prefix;
+    if (root->left == nullptr && root->right == nullptr) {
+        codes[root->symbol] = *prefix;
     }
 
     prefix->push_back(0);
@@ -141,9 +129,9 @@ void traverse_tree(huff_tree_node *root, std::vector<char> *codes, std::vector<c
 
 std::vector<char> *build_codes(huff_tree *tree) {
     auto codes = new std::vector<char>[256];
-    auto as_leaf = dynamic_cast<huff_tree_leaf_node *>(tree->root);
-    if (as_leaf != nullptr) {
-        codes[as_leaf->symbol] = {0};
+    auto root = tree->root;
+    if (root->left == nullptr && root->right == nullptr) {
+        codes[root->symbol] = {0};
         return codes;
     }
 
@@ -250,9 +238,9 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
         compressed_size++;
 
         for (uint8_t i = 0; i < 8; ++i) {
-            auto root_as_leaf = dynamic_cast<huff_tree_leaf_node *>(tree->root);
-            if (root_as_leaf != nullptr) {
-                out.write(reinterpret_cast<char *>(&root_as_leaf->symbol), 1);
+            auto root = tree->root;
+            if (root->left == nullptr && root->right == nullptr) {
+                out.write(reinterpret_cast<char *>(&root->symbol), 1);
                 decompressed_size++;
                 cur_node = tree->root;
                 num_symbols_decoded++;
@@ -273,9 +261,8 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
                     cur_node = cur_node->left;
                 }
             }
-            auto as_leaf = dynamic_cast<huff_tree_leaf_node *>(cur_node);
-            if (as_leaf != nullptr) {
-                out.write(reinterpret_cast<char *>(&as_leaf->symbol), 1);
+            if (cur_node->left == nullptr && cur_node->right == nullptr) {
+                out.write(reinterpret_cast<char *>(&cur_node->symbol), 1);
                 decompressed_size++;
                 cur_node = tree->root;
                 num_symbols_decoded++;
@@ -294,9 +281,8 @@ void print_codes(huff_tree_node *node, std::vector<char> *cur_code, int depth) {
     if (node == nullptr) {
         return;
     }
-    auto as_leaf = dynamic_cast<huff_tree_leaf_node *>(node);
-    if (as_leaf != nullptr) {
-        uint8_t symbol = as_leaf->symbol;
+    if (node->left == nullptr && node->right == nullptr) {
+        uint8_t symbol = node->symbol;
         if (depth == 0) {
             std::cout << 0;
         }
