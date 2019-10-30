@@ -50,20 +50,14 @@ struct huff_tree_node {
     }
 };
 
-struct compression_statistics {
-    size_t compressed_size;
+struct statistics {
     size_t source_size;
-    size_t additional_information_size;
-};
-
-struct decompression_statistics {
-    size_t decompressed_size;
     size_t compressed_size;
     size_t additional_information_size;
 };
 
 struct decompression_result {
-    decompression_statistics statistics;
+    statistics statistics;
     huff_tree *root;
 };
 
@@ -145,7 +139,7 @@ std::vector<char> *build_codes(huff_tree *tree) {
     return codes;
 }
 
-compression_statistics
+statistics
 _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint32_t *frequencies) {
     size_t source_size = 0;
     size_t compressed_size = 0;
@@ -197,7 +191,7 @@ _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint3
         out.write(reinterpret_cast<char *>(&cur_byte), 1);
     }
 
-    return compression_statistics{compressed_size, source_size, overhead_size};
+    return statistics{source_size, compressed_size, overhead_size};
 }
 
 decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
@@ -206,12 +200,12 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
     size_t overhead_size = 0;
 
     if (in.eof()) {
-        return decompression_result{decompression_statistics{0, 0, 0}, nullptr};
+        return decompression_result{statistics{0, 0, 0}, nullptr};
     }
     uint16_t num_non_zero_frequencies;
     in.read(reinterpret_cast<char *>(&num_non_zero_frequencies), 2);
     if (in.eof()) {
-        return decompression_result{decompression_statistics{0, 0, 0}, nullptr};
+        return decompression_result{statistics{0, 0, 0}, nullptr};
     }
     overhead_size += 2;
     uint32_t frequencies[256]{};
@@ -255,13 +249,13 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
                 num_symbols_decoded++;
                 if (num_symbols_decoded == file_len) {
                     return decompression_result{
-                            decompression_statistics{decompressed_size, compressed_size, overhead_size}, tree};
+                            statistics{decompressed_size, compressed_size, overhead_size}, tree};
                 }
             }
         }
     }
 
-    return decompression_result{decompression_statistics{decompressed_size, compressed_size, overhead_size}, tree};
+    return decompression_result{statistics{decompressed_size, compressed_size, overhead_size}, tree};
 }
 
 void print_codes(huff_tree_node *node, std::vector<char> *cur_code, int depth) {
@@ -290,16 +284,16 @@ void print_codes(huff_tree_node *node, std::vector<char> *cur_code, int depth) {
 }
 
 
-void print_compression_statistics(compression_statistics statistics) {
-    std::cout << statistics.source_size << std::endl;
-    std::cout << statistics.compressed_size << std::endl;
-    std::cout << statistics.additional_information_size << std::endl;
+void print_compression_statistics(statistics stats) {
+    std::cout << stats.source_size << std::endl;
+    std::cout << stats.compressed_size << std::endl;
+    std::cout << stats.additional_information_size << std::endl;
 }
 
-void print_decompression_statistics(decompression_statistics statistics) {
-    std::cout << statistics.compressed_size << std::endl;
-    std::cout << statistics.decompressed_size << std::endl;
-    std::cout << statistics.additional_information_size << std::endl;
+void print_decompression_statistics(statistics stats) {
+    std::cout << stats.compressed_size << std::endl;
+    std::cout << stats.source_size << std::endl;
+    std::cout << stats.additional_information_size << std::endl;
 }
 
 void decompress(std::ifstream &in_file, std::ofstream &out_file, bool is_verbose) {
@@ -319,7 +313,7 @@ void compress(std::ifstream &in, std::ofstream &out, bool verbose) {
     auto file_size = p.second;
     huff_tree *tree = build_tree(frequencies);
     if (tree == nullptr) {
-        print_compression_statistics(compression_statistics{file_size, 0, 0});
+        print_compression_statistics(statistics{file_size, 0, 0});
         delete[] frequencies;
         delete tree;
         return;
@@ -327,8 +321,8 @@ void compress(std::ifstream &in, std::ofstream &out, bool verbose) {
     std::vector<char> *codes = build_codes(tree);
     in.clear();
     in.seekg(0, std::ios::beg);
-    compression_statistics statistics = _compress(in, out, codes, frequencies);
-    print_compression_statistics(statistics);
+    statistics stats = _compress(in, out, codes, frequencies);
+    print_compression_statistics(stats);
     auto v = new std::vector<char>();
     if (verbose) {
         print_codes(tree->root, v, 0);
