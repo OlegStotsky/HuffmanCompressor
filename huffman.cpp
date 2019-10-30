@@ -77,7 +77,7 @@ std::pair<uint32_t *, size_t> calc_frequencies(std::ifstream *in_file) {
             break;
         }
         file_size++;
-        frequencies[reinterpret_cast<uint8_t &>(c)]++;
+        frequencies[static_cast<uint8_t>(c)]++;
     }
 
     return std::make_pair(frequencies, file_size);
