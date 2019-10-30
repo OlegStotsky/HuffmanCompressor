@@ -67,13 +67,13 @@ struct decompression_result {
     huff_tree *root;
 };
 
-std::pair<uint32_t *, size_t> calc_frequencies(std::ifstream *in_file) {
-    auto *frequencies = new uint32_t[256]();
+std::pair<uint32_t *, size_t> calc_frequencies(std::ifstream &in_file) {
+    auto frequencies = new uint32_t[256]();
     size_t file_size = 0;
 
     while (true) {
-        char c = in_file->get();
-        if (in_file->eof()) {
+        char c = in_file.get();
+        if (in_file.eof()) {
             break;
         }
         file_size++;
@@ -230,32 +230,21 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
 
     huff_tree_node *cur_node = tree->root;
     uint64_t num_symbols_decoded = 0;
+    bool root_is_leaf = tree->root->left == nullptr && tree->root->right == nullptr;
     while (!in.eof()) {
         char c = in.get();
         uint8_t u = reverse(reinterpret_cast<uint8_t &>(c));
         compressed_size++;
 
         for (uint8_t i = 0; i < 8; ++i) {
-            auto root = tree->root;
-            if (root->left == nullptr && root->right == nullptr) {
-                out.write(reinterpret_cast<char *>(&root->symbol), 1);
-                decompressed_size++;
-                cur_node = tree->root;
-                num_symbols_decoded++;
-                if (num_symbols_decoded == file_len) {
-                    return decompression_result{
-                            decompression_statistics{decompressed_size, compressed_size, overhead_size}, tree};
-                }
-                continue;
-            }
             uint8_t cur_bit = u & 1;
             u >>= 1;
-            if (cur_bit == 1) {
+            if (cur_bit == 1 && !root_is_leaf) {
                 if (cur_node != nullptr) {
                     cur_node = cur_node->right;
                 }
             } else {
-                if (cur_node != nullptr) {
+                if (cur_node != nullptr && !root_is_leaf) {
                     cur_node = cur_node->left;
                 }
             }
@@ -325,7 +314,7 @@ void decompress(std::ifstream &in_file, std::ofstream &out_file, bool is_verbose
 }
 
 void compress(std::ifstream &in, std::ofstream &out, bool verbose) {
-    std::pair<uint32_t *, size_t> p = calc_frequencies(&in);
+    std::pair<uint32_t *, size_t> p = calc_frequencies(in);
     auto frequencies = p.first;
     auto file_size = p.second;
     huff_tree *tree = build_tree(frequencies);
