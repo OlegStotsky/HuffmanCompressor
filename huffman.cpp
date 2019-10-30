@@ -150,7 +150,7 @@ _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint3
     size_t source_size = 0;
     size_t compressed_size = 0;
     size_t overhead_size = 0;
-    uint64_t num_non_zero_frequencies = 0;
+    uint16_t num_non_zero_frequencies = 0;
     uint64_t file_len = 0;
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] > 0) {
@@ -159,8 +159,8 @@ _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint3
         }
     }
     out.write(reinterpret_cast<char *>(&file_len), 8);
-    out.write(reinterpret_cast<char *>(&num_non_zero_frequencies), 8);
-    overhead_size += 16;
+    out.write(reinterpret_cast<char *>(&num_non_zero_frequencies), 2);
+    overhead_size += 10;
     for (int i = 0; i < 256; ++i) {
         if (frequencies[i] == 0) {
             continue;
@@ -218,11 +218,11 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
     }
     overhead_size += 8;
     uint64_t file_len = *reinterpret_cast<uint64_t *>(buf);
-    in.read(buf, 8);
-    overhead_size += 8;
-    uint64_t num_non_zero_frequencies = *reinterpret_cast<uint64_t *>(buf);
+    in.read(buf, 2);
+    overhead_size += 2;
+    uint16_t num_non_zero_frequencies = *reinterpret_cast<uint16_t *>(buf);
     uint32_t frequencies[256]{};
-    for (uint64_t i = 0; i < num_non_zero_frequencies; ++i) {
+    for (uint16_t i = 0; i < num_non_zero_frequencies; ++i) {
         in.read(buf, 1);
         uint8_t symbol = *reinterpret_cast<uint8_t *>(buf);
         in.read(buf, 4);
