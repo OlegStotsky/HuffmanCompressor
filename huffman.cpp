@@ -84,8 +84,12 @@ std::pair<uint64_t *, size_t> calc_frequencies(std::ifstream *in_file) {
 }
 
 huff_tree *build_tree(uint64_t *frequencies) {
-    auto is_greater = [](huff_tree_node *left, huff_tree_node *right) {
-        return left->frequency > right->frequency;
+    auto is_greater = [](const huff_tree_node *left, const huff_tree_node *right) {
+        if (left->frequency == right->frequency) {
+            return left->symbol < right->symbol;
+        }
+
+        return left->frequency < right->frequency;
     };
     std::priority_queue<huff_tree_node *, std::vector<huff_tree_node *>, decltype(is_greater)> Q(is_greater);
     for (int i = 0; i < 256; ++i) {
