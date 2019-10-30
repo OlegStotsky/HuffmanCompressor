@@ -93,10 +93,9 @@ huff_tree *build_tree(uint64_t *frequencies) {
     };
     std::priority_queue<huff_tree_node *, std::vector<huff_tree_node *>, decltype(is_greater)> Q(is_greater);
     for (int i = 0; i < 256; ++i) {
-        if (frequencies[i] == 0) {
-            continue;
+        if (frequencies[i] != 0) {
+            Q.push(new huff_tree_node(nullptr, nullptr, frequencies[i], i));
         }
-        Q.push(new huff_tree_node(nullptr, nullptr, frequencies[i], i));
     }
 
     while (Q.size() > 1) {
