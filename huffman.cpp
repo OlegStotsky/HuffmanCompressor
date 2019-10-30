@@ -34,7 +34,7 @@ struct huff_tree {
 struct huff_tree_node {
     huff_tree_node *left;
     huff_tree_node *right;
-    uint64_t frequency;
+    uint32_t frequency;
     uint8_t symbol;
 
     huff_tree_node(huff_tree_node *left, huff_tree_node *right, uint64_t frequency, uint8_t symbol) {
@@ -67,8 +67,8 @@ struct decompression_result {
     huff_tree *root;
 };
 
-std::pair<uint64_t *, size_t> calc_frequencies(std::ifstream *in_file) {
-    auto *frequencies = new uint64_t[256]();
+std::pair<uint32_t *, size_t> calc_frequencies(std::ifstream *in_file) {
+    auto *frequencies = new uint32_t[256]();
     size_t file_size = 0;
 
     while (true) {
@@ -83,7 +83,7 @@ std::pair<uint64_t *, size_t> calc_frequencies(std::ifstream *in_file) {
     return std::make_pair(frequencies, file_size);
 }
 
-huff_tree *build_tree(uint64_t *frequencies) {
+huff_tree *build_tree(uint32_t *frequencies) {
     auto is_greater = [](const huff_tree_node *left, const huff_tree_node *right) {
         if (left->frequency == right->frequency) {
             return left->symbol < right->symbol;
@@ -146,7 +146,7 @@ std::vector<char> *build_codes(huff_tree *tree) {
 }
 
 compression_statistics
-_compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint64_t *frequencies) {
+_compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint32_t *frequencies) {
     size_t source_size = 0;
     size_t compressed_size = 0;
     size_t overhead_size = 0;
@@ -166,8 +166,8 @@ _compress(std::ifstream &in, std::ofstream &out, std::vector<char> *codes, uint6
             continue;
         }
         out.write(reinterpret_cast<char *>(&reinterpret_cast<uint8_t &>(i)), 1);
-        out.write(reinterpret_cast<char *>(&frequencies[i]), 8);
-        overhead_size += 9;
+        out.write(reinterpret_cast<char *>(&frequencies[i]), 4);
+        overhead_size += 5;
     }
 
     uint8_t cur_byte = 0;
@@ -221,14 +221,14 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
     in.read(buf, 8);
     overhead_size += 8;
     uint64_t num_non_zero_frequencies = *reinterpret_cast<uint64_t *>(buf);
-    uint64_t frequencies[256]{};
+    uint32_t frequencies[256]{};
     for (uint64_t i = 0; i < num_non_zero_frequencies; ++i) {
         in.read(buf, 1);
         uint8_t symbol = *reinterpret_cast<uint8_t *>(buf);
-        in.read(buf, 8);
-        uint64_t frequency = *reinterpret_cast<uint64_t *>(buf);
+        in.read(buf, 4);
+        uint32_t frequency = *reinterpret_cast<uint32_t *>(buf);
         frequencies[symbol] = frequency;
-        overhead_size += 9;
+        overhead_size += 5;
     }
 
     huff_tree *tree = build_tree(frequencies);
@@ -330,7 +330,7 @@ void decompress(std::ifstream &in_file, std::ofstream &out_file, bool is_verbose
 }
 
 void compress(std::ifstream &in, std::ofstream &out, bool verbose) {
-    std::pair<uint64_t *, size_t> p = calc_frequencies(&in);
+    std::pair<uint32_t *, size_t> p = calc_frequencies(&in);
     auto frequencies = p.first;
     auto file_size = p.second;
     huff_tree *tree = build_tree(frequencies);
