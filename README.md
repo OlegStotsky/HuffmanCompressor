@@ -1,4 +1,1 @@
-# Домашнее задание "Сжатие Хаффмана"
-
-Решение необходимо оформить в файлах `main.cpp`, `huffman.cpp`,
-`huffman.hpp`.
+# Huffman Compressor
