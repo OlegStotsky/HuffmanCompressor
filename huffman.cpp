@@ -85,7 +85,7 @@ huff_tree *build_tree(uint32_t *frequencies) {
             return left->symbol < right->symbol;
         }
 
-        return left->frequency < right->frequency;
+        return left->frequency > right->frequency;
     };
     std::priority_queue<huff_tree_node *, std::vector<huff_tree_node *>, decltype(is_greater)> Q(is_greater);
     for (int i = 0; i < 256; ++i) {
