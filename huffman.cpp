@@ -21,18 +21,6 @@ namespace {
 
 struct huff_tree_node;
 
-struct huff_tree {
-    huff_tree_node *root;
-
-    explicit huff_tree(huff_tree_node *root) {
-        this->root = root;
-    }
-
-    ~huff_tree() {
-        delete root;
-    }
-};
-
 struct huff_tree_node {
     huff_tree_node *left;
     huff_tree_node *right;
@@ -49,6 +37,18 @@ struct huff_tree_node {
     ~huff_tree_node() {
         delete this->left;
         delete this->right;
+    }
+};
+
+struct huff_tree {
+    huff_tree_node *root;
+
+    explicit huff_tree(huff_tree_node *root) {
+        this->root = root;
+    }
+
+    ~huff_tree() {
+        delete root;
     }
 };
 
