@@ -244,7 +244,7 @@ decompression_result _decompress(std::ifstream &in, std::ofstream &out) {
                     cur_node = cur_node->left;
                 }
             }
-            if (cur_node->left == nullptr && cur_node->right == nullptr) {
+            if (cur_node && cur_node->left == nullptr && cur_node->right == nullptr) {
                 out.write(reinterpret_cast<char *>(&cur_node->symbol), 1);
                 decompressed_size++;
                 cur_node = tree->root;
@@ -303,7 +303,10 @@ void decompress(std::ifstream &in_file, std::ofstream &out_file, bool is_verbose
     print_decompression_statistics(result.statistics);
     auto v = new std::vector<char>();
     if (is_verbose) {
-        print_codes(result.root->root, v, 0);
+        if (result.root != nullptr) {
+            print_codes(result.root->root, v, 0);
+        }
+
     }
     delete v;
     delete result.root;
